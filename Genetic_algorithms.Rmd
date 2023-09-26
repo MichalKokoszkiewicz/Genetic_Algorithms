@@ -1,0 +1,238 @@
+
+
+**The prepared problem of my genetic algorithm is the scheduling of employees in a company. The company has employees with different availability to work. **
+
+**Each genotype consists of binary sequences, where each bit represents the availability of a given employee on a given day.**
+
+**The values in the genotype can be 0 or 1, representing the lack of availability or the availability of a given employee on a given day, respectively.**
+
+**The goal is to minimize the value of the evaluation function, which means maximizing job coverage with a minimum number of workers.**
+
+**Unfortunately, the code that takes into account the maximum number of workers and the minimum number of tasks compiles too long. So the following is code that simply optimizes the ratio of task coverage to the number of employees. But in the comments is posted code that takes into account the maximum number of employees and the minimum number of tasks.**
+
+```{r}
+
+# Population initialization function
+init <- function(numberofpeople, numberofdays) {
+  population = matrix(nrow = numberofpeople, ncol = numberofdays, data = sample(c(0, 1), numberofpeople * numberofdays, replace = TRUE))
+  return(population)
+}
+
+```
+
+**An initial population is created with the size of the number of individuals and a chromosome length equal to the number of days. Each individual is represented by a vector of bits, where 1 indicates the assignment of a worker to a given task on a given day, and 0 indicates no assignment.**
+
+```{r}
+
+# Solution quality assessment function
+fitness <- function(person) {
+  # Proportion of task coverage to number of employees
+  proportion = sum(person) / length(person)
+  
+  # Test of achieving the set value (e.g., the sum of weights close to the set constant "w")
+  total_weight = sum(person)
+  difference_weight = abs(total_weight - w) / w
+  
+  # Calculation of the quality assessment of the solution
+  evaluation = proportion - difference_weight
+  
+  return(evaluation)
+}
+
+# Here is the code taking into account the number of tasks and the maximum number of employees
+
+# fitness <- function(person) {
+#   # Proportion of task coverage to number of employees
+#   proportion <- sum(person) / length(person)
+#   
+#   # Test of achieving the set value (e.g., the sum of weights close to the set constant "w")
+#   total_weight <- sum(person)
+#   difference_weight <- abs(total_weight - w) / w
+#   
+#   # Limit the maximum number of employees available on any given day
+#   max_workers_day <- max(rowSums(matrix(person, nrow = number_of_people, ncol = number_days)))
+#   
+#   # Limit the minimum number of tasks covered by one employee
+#   min_tasks <- min(colSums(matrix(person, nrow = number_of_people, ncol = number_days)))
+#   
+#   # Calculation of the quality assessment of the solution
+#   evaluation <- proportion - difference_weight - max_workers_day - min_tasks
+#   
+#   return(evaluation)
+# }
+
+```
+
+**For each individual, a solution quality rating is calculated. The rating takes into account the proportion of task coverage by employees and the difference between the sum of the weights of the assigned tasks and the set "w" value. A higher rating indicates a better solution.**
+
+```{r}
+
+# Ranking selection function
+selection <- function(population, number_of_the_best) {
+  evaluations = apply(population, 1, fitness)
+  ranking = order(evaluations, decreasing = TRUE)
+  best = ranking[1:number_of_the_best]
+  return(best)
+}
+
+```
+
+**The selection function selects a certain number of the best individuals from the population based on an assessment of the quality of the solution.**
+
+```{r}
+
+# 1-point crossover function
+crossover <- function(population, number_of_the_best, number_of_offspring, number_of_parents = 2) {
+  descendants = matrix(nrow = number_of_offspring, ncol = ncol(population))
+  
+  for (i in 1:number_of_offspring) {
+    parents = sample(number_of_the_best, number_of_parents, replace = FALSE)
+    point_shade = sample(1:(ncol(population) - 1), 1)
+    descendant = c()
+    
+    for (j in 1:number_of_parents) {
+      descendant = c(descendant, population[parents[j], 1:point_shade])
+    }
+    descendant = c(descendant, population[parents[number_of_parents], (point_shade + 1):ncol(population)])
+    
+    descendants[i, ] = descendant[1:ncol(population)]  # Adjusting the size of the descendant vector
+    
+  }
+  
+  return(descendants)
+}
+
+# Here is the code taking into account the number of tasks and the maximum number of employees
+
+# crossover <- function(population, best, number_of_offspring, number_of_parents = 2) {
+#   descendants = matrix(nrow = number_of_offspring, ncol = ncol(population))
+#   
+#   for (i in 1:number_of_offspring) {
+#     descendant <- NULL
+#     while (is.null(descendant)) {
+#       parents = sample(best, number_of_parents, replace = FALSE)
+#       point_shade = sample(1:(ncol(population) - 1), 1)
+#       descendant = c(population[parents[1], 1:point_shade], population[parents[2], (point_shade + 1):ncol(population)])
+#       
+#       # Check the limitation on the maximum number of employees available on a given day
+#       max_workers_day = max(rowSums(matrix(descendant, nrow = 1)))
+#       if (max_workers_day > max_employees) {
+#         descendant <- NULL
+#         next
+#       }
+#       
+#       # Check the limitation on the minimum number of tasks covered by one employee
+#       min_tasks_worker = min(colSums(matrix(descendant, nrow = 1)))
+#       if (min_tasks_worker < min_tasks) {
+#         descendant <- NULL
+#         next
+#       }
+#     }
+#     
+#     descendants[i, ] <- descendant
+#   }
+#   
+#   return(descendants)
+# }
+
+```
+
+**The crossover function performs a 1-point crossover operation for a specified number of descendants. It is possible to select a certain number of parent groups, not just the best one.**
+
+```{r}
+
+# Mutation function - changing one bit
+mutation <- function(population, pr_mut) {
+  new_population = population
+  
+  for (i in 1:nrow(population)) {
+    for (j in 1:ncol(population)) {
+      if (runif(1) < pr_mut) {
+        new_population[i, j] = 1 - population[i, j]
+      }
+    }
+  }
+  
+  return(new_population)
+}
+
+```
+
+**The mutation function performs a mutation on a population of descendants. If the mutation occurs, the gene value is reversed (changed from 0 to 1 or from 1 to 0).**
+
+```{r}
+# Algorithm parameters
+number_of_people = 80
+number_days = 5
+number_of_the_best = 10
+number_of_offspring = 50
+probability_crossing = 0.9
+probability_mutation = 0.1
+w = 100  # Set sum of weights
+
+# Here is the code taking into account the number of tasks and the maximum number of employees
+
+# max_employees = 50
+# min_tasks = 10
+
+# Population initialization
+population = init(number_of_people, number_days)
+
+# Generation loop
+for (g in 1:100) {
+  #print(sprintf("Generacja %d", g))
+  
+  # Selection of the best individuals
+  best = selection(population, number_of_the_best)
+  
+  # Cross-posting
+  descendants = crossover(population, number_of_the_best, number_of_offspring)
+  
+  # Mutation
+  descendants = mutation(descendants, probability_mutation)
+  
+  # Combine the best individuals, descendants and random individuals into a new population
+  new_population = rbind(population[best, ], descendants, init(number_of_people - number_of_the_best - number_of_offspring, number_days))
+  
+  # Population update
+  population = new_population
+}
+
+# Choosing the best solution
+best_index = selection(population, 1)[1]
+best_resolution = population[best_index, ]
+
+# Displaying the results
+print("Best solution:")
+print(best_resolution)
+print("quality evaluation of the best solution:")
+print(fitness(best_resolution))
+
+print(population)
+
+
+```
+
+**The best individuals, post-crossing descendants and random individuals are combined into a new population. The best individuals are directly transferred to the new population. Descendants and random individuals are generated using the init function, which creates new individuals of size number_individuals - number_best - number_descendants and chromosome length number_days.**
+
+**The new population replaces the old population, and the process returns to step 2 for the next generation.**
+
+**After the 100 generations are completed, the best solution is selected from the population based on the solution quality rating. This is the individual with the highest quality rating, selected with the help of the selection function.**
+
+**The best solution (chromosome) and the quality rating of the best solution are displayed.**
+
+
+
+
+**The results indicate that the best solution found has a chromosome in which all employees are available for the entire working week, or 5 days. This means that for each day, every worker is available for work, represented by the value of 1 in the genotype.**
+
+**The quality score of this solution is 0.05, which means that a high proportion of task coverage is achieved with a minimum number of employees.**
+
+**This result suggests that the solution found meets the stated goals of minimizing the value of the evaluation function, that is, maximizing task coverage with the minimum number of workers.**
+
+------------------------------------------------------------------------
+
+
+
+
+
